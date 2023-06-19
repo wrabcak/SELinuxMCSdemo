@@ -40,7 +40,7 @@ cat: /opt/data/file3: Permission denied
 if [[ $(id -u) -ne 0 ]] ; then echo "Please run as root" ; exit 1 ; fi
 
 # install all required packages
-dnf yum install -y setools-console policycoreutils-python-utils mcstrans chcat 2> /dev/null
+yum install -y podman setools-console policycoreutils-python-utils mcstrans 2> /dev/null
 
 # prepare env for demo
 mkdir /opt/data
@@ -61,6 +61,10 @@ echo "profile3:r" | chpasswd
 
 echo "Data related to category c1" > /opt/data/file1
 echo "Data related to category c3" > /opt/data/file3
+
+firewall-cmd --add-port=8081/tcp --permanent
+firewall-cmd --add-port=8082/tcp --permanent
+firewall-cmd --reload
 
 # start demo
 
@@ -186,6 +190,46 @@ echo ""
 ls -Z /opt/data/
 echo ""
 
+read -p "--> podman run -d -p 8081:80/tcp --name my-web-server  quay.io/redhattraining/httpd-parent"
+echo ""
+podman run -d -p 8081:80/tcp --name my-web-server  quay.io/redhattraining/httpd-parent
+echo ""
+
+read -p "--> podman run -d -p 8082:80/tcp --name my-web-server2  quay.io/redhattraining/httpd-parent"
+echo ""
+podman run -d -p 8082:80/tcp --name my-web-server2  quay.io/redhattraining/httpd-parent
+echo ""
+
+read -p "--> podman ps"
+echo ""
+podman ps
+echo ""
+
+read -p "--> ps -efZ | grep container_t"
+echo ""
+ps -efZ | grep container_t
+echo ""
+
+read -p "--> podman stop my-web-server my-web-server2"
+echo ""
+podman stop my-web-server my-web-server2
+echo ""
+
+read -p "--> podman run -d --name my-test-fedora --security-opt label=level:s0:c30,c50 fedora sleep 50000"
+echo ""
+podman run -d --name my-test-fedora --security-opt label=level:s0:c30,c50 fedora sleep 50000
+echo ""
+
+read -p "--> ps -efZ | grep container_t"
+echo ""
+ps -efZ | grep container_t
+echo ""
+
+read -p "--> podman stop my-test-fedora"
+echo ""
+podman stop -t=1 my-test-fedora 2> /dev/null
+echo ""
+
 echo "Demo end."
 echo "Clean up phase."
 
@@ -206,4 +250,10 @@ userdel -r profile2
 userdel -r profile3
 
 head -n -2 /etc/selinux/targeted/setrans.conf > /etc/selinux/targeted/setrans.conf
+
+firewall-cmd --remove-port=8081/tcp --permanent
+firewall-cmd --remove-port=8082/tcp --permanent
+firewall-cmd --reload
+
+podman rm my-web-server my-web-server2 my-test-fedora &> /dev/null
 
